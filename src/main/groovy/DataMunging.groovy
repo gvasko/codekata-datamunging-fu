@@ -65,33 +65,56 @@ def football =
    20. Leicester       38     5  13  20    30  -  64    28
 """
 
-dayMinMax = convert(weather)
-
-private List convert(String weather) {
+private List convertTextToTable(String data, List widths) {
+    def header = []
     def list = []
-    def headerDone = false
-    weather.eachLine {
-        if (it.trim() && headerDone) {
-            list << [
-                    day: it[0..4].trim(),
-                    max: it[5..10].replace('*', ' ').trim(),
-                    min: it[11..16].replace('*', ' ').trim()
-            ]
+    def processHeader = true
+    data.eachLine { line ->
+        if (line.trim()) {
+            if (processHeader) {
+                int beginIndex = 0
+                widths.forEach { int it ->
+                    int endIndex = Math.min(beginIndex + it, line.length())
+                    header << line[beginIndex..endIndex-1].trim()
+                    beginIndex = endIndex
+                }
+                processHeader = false
+            } else {
+                def beginIndex = 0
+                def record = [:]
+                [header, widths].transpose().collect { hw ->
+                    int width = hw[1]
+                    def endIndex = Math.min(beginIndex + width, line.length())
+                    record[hw[0]] = line[beginIndex..endIndex-1].replace('*', ' ').trim()
+                    beginIndex = endIndex
+                }
+                list << record
+            }
         }
-        headerDone = true
     }
     list
 }
 
-def minDiff = 0.0f
-def minDay
+private String getMinDiff(List dayMinMax, String field1, String field2, String returnField) {
+    def minDay = null
+    float minDiff = 0.0f
 
-dayMinMax.forEach {
-    float diff = Math.abs(it.max.toFloat() - it.min.toFloat())
-    if (!minDay || diff < minDiff) {
-        minDiff = diff
-        minDay = it.day
+    dayMinMax.forEach { rec ->
+        float diff = Math.abs(Float.parseFloat(rec[field1]) - Float.parseFloat(rec[field2]))
+        if (minDay == null || diff < minDiff) {
+            minDiff = diff
+            minDay = rec[returnField]
+        }
     }
+    minDay
 }
 
+weatherTable = convertTextToTable(weather, [5, 6, 6])
+weatherTable = weatherTable.take(weatherTable.size() - 1)
+def minDay = getMinDiff(weatherTable, "MxT", "MnT", "Dy")
 println minDay
+
+footballTable = convertTextToTable(football, [7, 16, 6, 4, 4, 6, 4, 3, 6, 3])
+footballTable = footballTable.findAll { !it.Team.startsWith("----") }
+def minTeam = getMinDiff(footballTable, "F", "A", "Team")
+println minTeam
