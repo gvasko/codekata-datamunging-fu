@@ -1,4 +1,5 @@
 /**
+ * All in one file
  * Created by Gvasko on 2015.04.24..
  */
 
@@ -65,56 +66,94 @@ def football =
    20. Leicester       38     5  13  20    30  -  64    28
 """
 
-private List convertTextToTable(String data, List widths) {
-    def header = []
-    def list = []
-    def processHeader = true
-    data.eachLine { line ->
-        if (line.trim()) {
-            if (processHeader) {
-                int beginIndex = 0
-                widths.forEach { int it ->
-                    int endIndex = Math.min(beginIndex + it, line.length())
-                    header << line[beginIndex..endIndex-1].trim()
-                    beginIndex = endIndex
+class LineProcessor {
+    String line
+    int beginIndex = 0
+    int endIndex = 0
+
+    LineProcessor(String line) {
+        this.line = line
+    }
+
+    String getNextField(int width) {
+        endIndex = Math.min(beginIndex + width, line.length())
+        String ret = line[beginIndex..endIndex-1].replace('*', ' ').trim()
+        beginIndex = endIndex
+        return ret
+    }
+}
+
+class TableProcessor {
+    String data
+    List<Integer> widths
+    List<String> header = []
+    LineProcessor lineP
+
+    TableProcessor(String data, List widths) {
+        this.data = data
+        this.widths = widths
+    }
+
+    List convertTextToTable() {
+        List table = []
+        def processHeader = true
+        data.eachLine { line ->
+            if (line.trim()) {
+                lineP = new LineProcessor(line)
+                if (processHeader) {
+                    header = readHeader()
+                    processHeader = false
+                } else {
+                    table << readRecord()
                 }
-                processHeader = false
-            } else {
-                def beginIndex = 0
-                def record = [:]
-                [header, widths].transpose().collect { hw ->
-                    int width = hw[1]
-                    def endIndex = Math.min(beginIndex + width, line.length())
-                    record[hw[0]] = line[beginIndex..endIndex-1].replace('*', ' ').trim()
-                    beginIndex = endIndex
-                }
-                list << record
             }
         }
+        table
     }
-    list
+
+    private readHeader() {
+        List h = []
+        widths.forEach { int width ->
+            h << lineP.getNextField(width)
+        }
+        h
+    }
+
+    private readRecord() {
+        assert header != null && header.size() > 0
+        def record = [:]
+        [header, widths].transpose().forEach { hw ->
+            String field = hw[0]
+            int width = hw[1]
+            record[field] = lineP.getNextField(width)
+        }
+        record
+    }
+
 }
 
 private String getMinDiff(List dayMinMax, String field1, String field2, String returnField) {
-    def minDay = null
+    def ret = null
     float minDiff = 0.0f
 
     dayMinMax.forEach { rec ->
-        float diff = Math.abs(Float.parseFloat(rec[field1]) - Float.parseFloat(rec[field2]))
-        if (minDay == null || diff < minDiff) {
+        float diff = Math.abs(Float.parseFloat(rec[field1].toString()) - Float.parseFloat(rec[field2].toString()))
+        if (ret == null || diff < minDiff) {
             minDiff = diff
-            minDay = rec[returnField]
+            ret = rec[returnField]
         }
     }
-    minDay
+    ret
 }
 
-weatherTable = convertTextToTable(weather, [5, 6, 6])
+weatherTableProcessor = new TableProcessor(weather, [5, 6, 6])
+weatherTable = weatherTableProcessor.convertTextToTable()
 weatherTable = weatherTable.take(weatherTable.size() - 1)
 def minDay = getMinDiff(weatherTable, "MxT", "MnT", "Dy")
 println minDay
 
-footballTable = convertTextToTable(football, [7, 16, 6, 4, 4, 6, 4, 3, 6, 3])
+footballTableProcessor = new TableProcessor(football, [7, 16, 6, 4, 4, 6, 4, 3, 6, 3])
+footballTable = footballTableProcessor.convertTextToTable()
 footballTable = footballTable.findAll { !it.Team.startsWith("----") }
 def minTeam = getMinDiff(footballTable, "F", "A", "Team")
 println minTeam
