@@ -132,28 +132,24 @@ class TableProcessor {
 
 }
 
-private String getMinDiff(List dayMinMax, String field1, String field2, String returnField) {
-    def ret = null
-    float minDiff = 0.0f
+private float getDiff(Map rec, String field1, String field2) {
+    Math.abs(Float.parseFloat(rec[field1].toString()) - Float.parseFloat(rec[field2].toString()))
+}
 
-    dayMinMax.forEach { rec ->
-        float diff = Math.abs(Float.parseFloat(rec[field1].toString()) - Float.parseFloat(rec[field2].toString()))
-        if (ret == null || diff < minDiff) {
-            minDiff = diff
-            ret = rec[returnField]
+private Map getMinDiffRecord(List dayMinMax, String field1, String field2) {
+    dayMinMax.min { rec1, rec2 ->
+        Float.compare(getDiff(rec1, field1, field2), getDiff(rec2, field1, field2))
         }
-    }
-    ret
 }
 
 weatherTableProcessor = new TableProcessor(weather, [5, 6, 6])
 weatherTable = weatherTableProcessor.convertTextToTable()
 weatherTable = weatherTable.take(weatherTable.size() - 1)
-def minDay = getMinDiff(weatherTable, "MxT", "MnT", "Dy")
-println minDay
+def minDay = getMinDiffRecord(weatherTable, "MxT", "MnT")
+println minDay["Dy"]
 
 footballTableProcessor = new TableProcessor(football, [7, 16, 6, 4, 4, 6, 4, 3, 6, 3])
 footballTable = footballTableProcessor.convertTextToTable()
 footballTable = footballTable.findAll { !it.Team.startsWith("----") }
-def minTeam = getMinDiff(footballTable, "F", "A", "Team")
-println minTeam
+def minTeam = getMinDiffRecord(footballTable, "F", "A")
+println minTeam["Team"]
