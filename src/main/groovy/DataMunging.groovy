@@ -66,12 +66,12 @@ def football =
    20. Leicester       38     5  13  20    30  -  64    28
 """
 
-class LineProcessor {
+class LineParser {
     String line
     int beginIndex = 0
     int endIndex = 0
 
-    LineProcessor(String line) {
+    LineParser(String line) {
         this.line = line
     }
 
@@ -83,23 +83,23 @@ class LineProcessor {
     }
 }
 
-class TableProcessor {
+class TableParser {
     String data
     List<Integer> widths
     List<String> header = []
-    LineProcessor lineP
+    LineParser lineP
 
-    TableProcessor(String data, List widths) {
+    TableParser(String data, List widths) {
         this.data = data
         this.widths = widths
     }
 
-    List convertTextToTable() {
+    List asListOfRecords() {
         List table = []
         def processHeader = true
         data.eachLine { line ->
             if (line.trim()) {
-                lineP = new LineProcessor(line)
+                lineP = new LineParser(line)
                 if (processHeader) {
                     header = readHeader()
                     processHeader = false
@@ -112,11 +112,11 @@ class TableProcessor {
     }
 
     private readHeader() {
-        List h = []
+        List header = []
         widths.forEach { int width ->
-            h << lineP.getNextField(width)
+            header << lineP.getNextField(width)
         }
-        h
+        header
     }
 
     private readRecord() {
@@ -142,14 +142,14 @@ private Map getMinDiffRecord(List dayMinMax, String field1, String field2) {
         }
 }
 
-weatherTableProcessor = new TableProcessor(weather, [5, 6, 6])
-weatherTable = weatherTableProcessor.convertTextToTable()
+weatherTableParser = new TableParser(weather, [5, 6, 6])
+weatherTable = weatherTableParser.asListOfRecords()
 weatherTable = weatherTable.take(weatherTable.size() - 1)
 def minDay = getMinDiffRecord(weatherTable, "MxT", "MnT")
 println minDay["Dy"]
 
-footballTableProcessor = new TableProcessor(football, [7, 16, 6, 4, 4, 6, 4, 3, 6, 3])
-footballTable = footballTableProcessor.convertTextToTable()
+footballTableParser = new TableParser(football, [7, 16, 6, 4, 4, 6, 4, 3, 6, 3])
+footballTable = footballTableParser.asListOfRecords()
 footballTable = footballTable.findAll { !it.Team.startsWith("----") }
 def minTeam = getMinDiffRecord(footballTable, "F", "A")
 println minTeam["Team"]
